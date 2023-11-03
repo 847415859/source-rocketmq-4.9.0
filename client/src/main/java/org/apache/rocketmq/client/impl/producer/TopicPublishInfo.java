@@ -23,11 +23,20 @@ import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.common.protocol.route.QueueData;
 import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 
+/**
+ * 主题发布信息
+ */
 public class TopicPublishInfo {
+    // 是否是顺序消息
     private boolean orderTopic = false;
+    // 是否有主题路由信息
     private boolean haveTopicRouterInfo = false;
+    // 消息队列
     private List<MessageQueue> messageQueueList = new ArrayList<MessageQueue>();
+    // 借助 ThreadLocal 我们可以多线程的发送消息
+    // 存放各个线程应该发送消息到哪个mq
     private volatile ThreadLocalIndex sendWhichQueue = new ThreadLocalIndex();
+    // 主题路由数据
     private TopicRouteData topicRouteData;
 
     public boolean isOrderTopic() {
@@ -66,6 +75,12 @@ public class TopicPublishInfo {
         this.haveTopicRouterInfo = haveTopicRouterInfo;
     }
 
+    /**
+     * 根据broker名称获取消息队列，如果 lastBrokerName 不为 null ，则说明上次发送失败
+     * 所有优先选择向其他broker发送消息
+     * @param lastBrokerName
+     * @return
+     */
     public MessageQueue selectOneMessageQueue(final String lastBrokerName) {
         if (lastBrokerName == null) {
             return selectOneMessageQueue();
@@ -76,6 +91,7 @@ public class TopicPublishInfo {
                 if (pos < 0)
                     pos = 0;
                 MessageQueue mq = this.messageQueueList.get(pos);
+                // 尽可能的不在上次发送失败的 Broker 发送消息
                 if (!mq.getBrokerName().equals(lastBrokerName)) {
                     return mq;
                 }
@@ -84,6 +100,10 @@ public class TopicPublishInfo {
         }
     }
 
+    /**
+     * 按照顺序获取一个
+     * @return
+     */
     public MessageQueue selectOneMessageQueue() {
         int index = this.sendWhichQueue.incrementAndGet();
         int pos = Math.abs(index) % this.messageQueueList.size();

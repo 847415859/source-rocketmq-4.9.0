@@ -421,7 +421,7 @@ public abstract class NettyRemotingAbstract {
         final int opaque = request.getOpaque();
 
         try {
-            // 封装相应 Future 等到请求返回
+            // 封装相应 Future 等到请求返回(里面封装 CountdownLatch 来完成同步等待)
             final ResponseFuture responseFuture = new ResponseFuture(channel, opaque, timeoutMillis, null, null);
             this.responseTable.put(opaque, responseFuture);
             final SocketAddress addr = channel.remoteAddress();

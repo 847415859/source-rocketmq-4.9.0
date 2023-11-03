@@ -30,6 +30,9 @@ import java.util.Map;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.sysflag.MessageSysFlag;
 
+/**
+ * 消息的编解码器
+ */
 public class MessageDecoder {
 //    public final static int MSG_ID_LENGTH = 8 + 8;
 
@@ -442,6 +445,11 @@ public class MessageDecoder {
         return map;
     }
 
+    /**
+     * 消息编码
+     * @param message
+     * @return
+     */
     public static byte[] encodeMessage(Message message) {
         //only need flag, body, properties
         byte[] body = message.getBody();
@@ -482,6 +490,12 @@ public class MessageDecoder {
         return byteBuffer.array();
     }
 
+    /**
+     * 消息解码
+     * @param byteBuffer
+     * @return
+     * @throws Exception
+     */
     public static Message decodeMessage(ByteBuffer byteBuffer) throws Exception {
         Message message = new Message();
 
@@ -513,6 +527,11 @@ public class MessageDecoder {
         return message;
     }
 
+    /**
+     * 消息集合批量编码
+     * @param messages
+     * @return
+     */
     public static byte[] encodeMessages(List<Message> messages) {
         //TO DO refactor, accumulate in one buffer, avoid copies
         List<byte[]> encodedMessages = new ArrayList<byte[]>(messages.size());

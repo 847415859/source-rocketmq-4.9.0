@@ -60,6 +60,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Wrapping internal implementations for virtually all methods presented in this class.
+     * 包装该类中几乎所有方法的内部实现
      */
     protected final transient DefaultMQProducerImpl defaultMQProducerImpl;
     private final InternalLogger log = ClientLogger.getLog();
@@ -68,7 +69,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
      * important when transactional messages are involved. </p>
      *
      * For non-transactional messages, it does not matter as long as it's unique per process. </p>
-     *
+     * 消费者组
      * See {@linktourl http://rocketmq.apache.org/docs/core-concept/} for more discussion.
      */
     private String producerGroup;
@@ -80,11 +81,13 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Number of queues to create per default topic.
+     * 主题队列数量
      */
     private volatile int defaultTopicQueueNums = 4;
 
     /**
      * Timeout for sending messages.
+     * 消息发送
      */
     private int sendMsgTimeout = 3000;
 
@@ -268,11 +271,12 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
      *
      * <strong> Much internal initializing procedures are carried out to make this instance prepared, thus, it's a must
      * to invoke this method before sending or querying messages. </strong> </p>
-     *
+     * 执行许多内部初始化过程来准备此实例，因此，在发送或查询消息之前必须调用此方法
      * @throws MQClientException if there is any unexpected error.
      */
     @Override
     public void start() throws MQClientException {
+        // 设置消费者组
         this.setProducerGroup(withNamespace(this.producerGroup));
         this.defaultMQProducerImpl.start();
         if (null != traceDispatcher) {
@@ -309,11 +313,12 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Send message in synchronous mode. This method returns only when the sending procedure totally completes. </p>
-     *
+     * 同步发送消息，这个方法会发送完所有的消息之后返回
      * <strong>Warn:</strong> this method has internal retry-mechanism, that is, internal implementation will retry
      * {@link #retryTimesWhenSendFailed} times before claiming failure. As a result, multiple messages may potentially
      * delivered to broker(s). It's up to the application developers to resolve potential duplication issue.
-     *
+     *  这个方法具有内部重试机制，即内部实现在声明失败之前会重试{@link retryTimesWhenSendFailed}次。
+     *  因此，可能会将多条消息传递给代理。由应用程序开发人员来解决潜在的重复问题
      * @param msg Message to send.
      * @return {@link SendResult} instance to inform senders details of the deliverable, say Message ID of the message,
      * {@link SendStatus} indicating broker storage/replication status, message queue sent to, etc.
@@ -325,7 +330,9 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     @Override
     public SendResult send(
         Message msg) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
+        // 检查消息
         Validators.checkMessage(msg, this);
+        // 设置主题
         msg.setTopic(withNamespace(msg.getTopic()));
         return this.defaultMQProducerImpl.send(msg);
     }
@@ -965,15 +972,24 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
         this.defaultMQProducerImpl.setAsyncSenderExecutor(asyncSenderExecutor);
     }
 
+    /**
+     * 封装消息集合
+     * @param msgs
+     * @return
+     * @throws MQClientException
+     */
     private MessageBatch batch(Collection<Message> msgs) throws MQClientException {
         MessageBatch msgBatch;
         try {
+            // 创建批量消息对象 MessageBatch
             msgBatch = MessageBatch.generateFromList(msgs);
             for (Message message : msgBatch) {
+                // 校验消息
                 Validators.checkMessage(message, this);
                 MessageClientIDSetter.setUniqID(message);
                 message.setTopic(withNamespace(message.getTopic()));
             }
+            // msgBatch.encode() 对批量消息进行编码
             msgBatch.setBody(msgBatch.encode());
         } catch (Exception e) {
             throw new MQClientException("Failed to initiate the MessageBatch", e);

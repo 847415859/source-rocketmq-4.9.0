@@ -35,6 +35,9 @@ public class RequestFutureTable {
         return requestFutureTable;
     }
 
+    /**
+     * 定期扫描在等待中的请求，设置超时，并剔除等待缓存队列， 默认 1s 扫描一次
+     */
     public static void scanExpiredRequest() {
         final List<RequestResponseFuture> rfList = new LinkedList<RequestResponseFuture>();
         Iterator<Map.Entry<String, RequestResponseFuture>> it = requestFutureTable.entrySet().iterator();

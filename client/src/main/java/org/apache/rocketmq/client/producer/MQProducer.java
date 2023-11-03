@@ -33,6 +33,7 @@ public interface MQProducer extends MQAdmin {
 
     List<MessageQueue> fetchPublishMessageQueues(final String topic) throws MQClientException;
 
+    // 同步发送
     SendResult send(final Message msg) throws MQClientException, RemotingException, MQBrokerException,
         InterruptedException;
 
@@ -45,9 +46,11 @@ public interface MQProducer extends MQAdmin {
     void send(final Message msg, final SendCallback sendCallback, final long timeout)
         throws MQClientException, RemotingException, InterruptedException;
 
+    // 单向消息发送
     void sendOneway(final Message msg) throws MQClientException, RemotingException,
         InterruptedException;
 
+    // 指定消息队列发送
     SendResult send(final Message msg, final MessageQueue mq) throws MQClientException,
         RemotingException, MQBrokerException, InterruptedException;
 
@@ -63,6 +66,7 @@ public interface MQProducer extends MQAdmin {
     void sendOneway(final Message msg, final MessageQueue mq) throws MQClientException,
         RemotingException, InterruptedException;
 
+    // 执行消息队列选择器发送消息
     SendResult send(final Message msg, final MessageQueueSelector selector, final Object arg)
         throws MQClientException, RemotingException, MQBrokerException, InterruptedException;
 
@@ -73,7 +77,7 @@ public interface MQProducer extends MQAdmin {
     void send(final Message msg, final MessageQueueSelector selector, final Object arg,
         final SendCallback sendCallback) throws MQClientException, RemotingException,
         InterruptedException;
-
+    // 单向消息指定消息队列选择器
     void send(final Message msg, final MessageQueueSelector selector, final Object arg,
         final SendCallback sendCallback, final long timeout) throws MQClientException, RemotingException,
         InterruptedException;

@@ -50,7 +50,7 @@ public interface MQAdmin {
     /**
      * Gets the message queue offset according to some time in milliseconds<br>
      * be cautious to call because of more IO overhead
-     *
+     * 根据某个时间获取消息队列偏移量（以毫秒为单位）,由于IO溢出过多，请谨慎调用
      * @param mq Instance of MessageQueue
      * @param timestamp from when in milliseconds.
      * @return offset
@@ -59,7 +59,7 @@ public interface MQAdmin {
 
     /**
      * Gets the max offset
-     *
+     * 获取某个队列最大的偏移量
      * @param mq Instance of MessageQueue
      * @return the max offset
      */
@@ -67,7 +67,7 @@ public interface MQAdmin {
 
     /**
      * Gets the minimum offset
-     *
+     * 获取到指定队列的最小偏移量
      * @param mq Instance of MessageQueue
      * @return the minimum offset
      */
@@ -75,7 +75,7 @@ public interface MQAdmin {
 
     /**
      * Gets the earliest stored message time
-     *
+     * 获取到最早的消息时间
      * @param mq Instance of MessageQueue
      * @return the time in microseconds
      */
@@ -83,7 +83,7 @@ public interface MQAdmin {
 
     /**
      * Query message according to message id
-     *
+     * 根据消息id查询消息
      * @param offsetMsgId message id
      * @return message
      */
@@ -92,8 +92,8 @@ public interface MQAdmin {
 
     /**
      * Query messages
-     *
-     * @param topic message topic
+     * 范围查询消息
+     * @param topic message topic           消息主题
      * @param key message key index word
      * @param maxNum max message number
      * @param begin from when
