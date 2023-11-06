@@ -36,19 +36,21 @@ public class MappedFileQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
 
+    // 最大文件批量
     private static final int DELETE_FILES_BATCH_MAX = 10;
-
+    // 存储目录
     private final String storePath;
-
+    // 单个文件大小
     private final int mappedFileSize;
-
+    // MappedFIle 文件集合
     private final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>();
-
+    // 创建 MappedFile服务
     private final AllocateMappedFileService allocateMappedFileService;
-
+    // 磁盘刷盘位置指针
     private long flushedWhere = 0;
+    // 当前数据提交指针,内存中 ByteBuffer当前的写指针,该值大于等于 flushWhere
     private long committedWhere = 0;
-
+    // 最近一条消息的存储时间
     private volatile long storeTimestamp = 0;
 
     public MappedFileQueue(final String storePath, int mappedFileSize,
@@ -77,12 +79,18 @@ public class MappedFileQueue {
         }
     }
 
+    /**
+     * 获取包含时间戳获取消息
+     * @param timestamp
+     * @return
+     */
     public MappedFile getMappedFileByTime(final long timestamp) {
         Object[] mfs = this.copyMappedFiles(0);
 
         if (null == mfs)
             return null;
-
+        // 遍历所有 MappedFile 查询最后一次修改时间大于指定时间的，
+        // 因为 MappedFile 是按照时间的顺序写
         for (int i = 0; i < mfs.length; i++) {
             MappedFile mappedFile = (MappedFile) mfs[i];
             if (mappedFile.getLastModifiedTimestamp() >= timestamp) {
@@ -92,6 +100,7 @@ public class MappedFileQueue {
 
         return (MappedFile) mfs[mfs.length - 1];
     }
+
 
     private Object[] copyMappedFiles(final int reservedMappedFiles) {
         Object[] mfs;
@@ -148,11 +157,14 @@ public class MappedFileQueue {
     }
 
     public boolean load() {
+        // 获取鵆路径
         File dir = new File(this.storePath);
+        // 获得文件数组
         File[] files = dir.listFiles();
         if (files != null) {
-            // ascending order
+            // ascending order  文件升序排序
             Arrays.sort(files);
+            // 遍历 Commit 文件
             for (File file : files) {
 
                 if (file.length() != this.mappedFileSize) {
@@ -162,8 +174,9 @@ public class MappedFileQueue {
                 }
 
                 try {
+                    // 创建映射文件
                     MappedFile mappedFile = new MappedFile(file.getPath(), mappedFileSize);
-
+                    // 将映射文件添加到队列
                     mappedFile.setWrotePosition(this.mappedFileSize);
                     mappedFile.setFlushedPosition(this.mappedFileSize);
                     mappedFile.setCommittedPosition(this.mappedFileSize);
@@ -194,18 +207,25 @@ public class MappedFileQueue {
         return 0;
     }
 
+    /**
+     * 获取最后一个 Mmap 文件
+     * @param startOffset       开始偏移量
+     * @param needCreate        是否需要新建
+     * @return
+     */
     public MappedFile getLastMappedFile(final long startOffset, boolean needCreate) {
         long createOffset = -1;
+        // 获取最后一个 Mmap文件
         MappedFile mappedFileLast = getLastMappedFile();
-
+        // 计算开始偏移量，如果之前没有则为0
         if (mappedFileLast == null) {
             createOffset = startOffset - (startOffset % this.mappedFileSize);
         }
-
+        // 如果之前有 commitLog 文件，但是数据已经放满了，需要创建新的 CommitLog 文件，则漂移了
         if (mappedFileLast != null && mappedFileLast.isFull()) {
             createOffset = mappedFileLast.getFileFromOffset() + this.mappedFileSize;
         }
-
+        // 创建 commitLog 文件
         if (createOffset != -1 && needCreate) {
             String nextFilePath = this.storePath + File.separator + UtilAll.offset2FileName(createOffset);
             String nextNextFilePath = this.storePath + File.separator
@@ -236,10 +256,19 @@ public class MappedFileQueue {
         return mappedFileLast;
     }
 
+    /**
+     * 获取新的一个 mmap文件
+     * @param startOffset
+     * @return
+     */
     public MappedFile getLastMappedFile(final long startOffset) {
         return getLastMappedFile(startOffset, true);
     }
 
+    /**
+     * 获取最后一个 Mmap 文件
+     * @return
+     */
     public MappedFile getLastMappedFile() {
         MappedFile mappedFileLast = null;
 
@@ -288,6 +317,10 @@ public class MappedFileQueue {
         return true;
     }
 
+    /**
+     * 获得最小的偏移量
+     * @return
+     */
     public long getMinOffset() {
 
         if (!this.mappedFiles.isEmpty()) {
@@ -302,6 +335,10 @@ public class MappedFileQueue {
         return -1;
     }
 
+    /**
+     * 获取最大的偏移量
+     * @return
+     */
     public long getMaxOffset() {
         MappedFile mappedFile = getLastMappedFile();
         if (mappedFile != null) {
@@ -310,6 +347,10 @@ public class MappedFileQueue {
         return 0;
     }
 
+    /**
+     * 返回存储文件当前写指针
+     * @return
+     */
     public long getMaxWrotePosition() {
         MappedFile mappedFile = getLastMappedFile();
         if (mappedFile != null) {
@@ -457,16 +498,20 @@ public class MappedFileQueue {
 
     /**
      * Finds a mapped file by offset.
-     *
+     * 根据偏移量寻找 MappedFile 文件
      * @param offset Offset.
-     * @param returnFirstOnNotFound If the mapped file is not found, then return the first one.
+     * @param returnFirstOnNotFound If the mapped file is not found, then return the first one. // 如果没找到返回第一个 MappedFile 文件
      * @return Mapped file or null (when not found and returnFirstOnNotFound is <code>false</code>).
      */
     public MappedFile findMappedFileByOffset(final long offset, final boolean returnFirstOnNotFound) {
         try {
+            // 获取第一个 MapperFile 文件
             MappedFile firstMappedFile = this.getFirstMappedFile();
+            // 获取最后一个 MapperFile 文件
             MappedFile lastMappedFile = this.getLastMappedFile();
+            // 有 MappedFile 才进行处理
             if (firstMappedFile != null && lastMappedFile != null) {
+                // 所所查询的偏移量不在现有 broker 的偏移量范围值
                 if (offset < firstMappedFile.getFileFromOffset() || offset >= lastMappedFile.getFileFromOffset() + this.mappedFileSize) {
                     LOG_ERROR.warn("Offset not matched. Request offset: {}, firstOffset: {}, lastOffset: {}, mappedFileSize: {}, mappedFiles count: {}",
                         offset,
@@ -475,18 +520,20 @@ public class MappedFileQueue {
                         this.mappedFileSize,
                         this.mappedFiles.size());
                 } else {
+                    // 获取文件索引
                     int index = (int) ((offset / this.mappedFileSize) - (firstMappedFile.getFileFromOffset() / this.mappedFileSize));
                     MappedFile targetFile = null;
                     try {
+                        // 根据索引找到目标文件
                         targetFile = this.mappedFiles.get(index);
                     } catch (Exception ignored) {
                     }
-
+                    // 校验偏移量是否在查询到的 Mapped 文件范围中
                     if (targetFile != null && offset >= targetFile.getFileFromOffset()
                         && offset < targetFile.getFileFromOffset() + this.mappedFileSize) {
                         return targetFile;
                     }
-
+                    // 遍历每个 Mapped 文件，进行对比
                     for (MappedFile tmpMappedFile : this.mappedFiles) {
                         if (offset >= tmpMappedFile.getFileFromOffset()
                             && offset < tmpMappedFile.getFileFromOffset() + this.mappedFileSize) {
@@ -494,7 +541,7 @@ public class MappedFileQueue {
                         }
                     }
                 }
-
+                // 如果还是没找到 且 returnFirstOnNotFound = true,则返回第一个
                 if (returnFirstOnNotFound) {
                     return firstMappedFile;
                 }

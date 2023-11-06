@@ -221,8 +221,12 @@ public class ConsumeQueue {
         return 0;
     }
 
+    /**
+     * 清除脏数据
+     * @param phyOffet
+     */
     public void truncateDirtyLogicFiles(long phyOffet) {
-
+        // 遍历目录下文件
         int logicFileSize = this.mappedFileSize;
 
         this.maxPhysicOffset = phyOffet;
@@ -376,11 +380,16 @@ public class ConsumeQueue {
         return this.minLogicOffset / CQ_STORE_UNIT_SIZE;
     }
 
+    /**
+     * 写入 分发消息
+     * @param request
+     */
     public void putMessagePositionInfoWrapper(DispatchRequest request) {
-        final int maxRetries = 30;
+        final int maxRetries = 30;  // 最大重试次数
         boolean canWrite = this.defaultMessageStore.getRunningFlags().isCQWriteable();
         for (int i = 0; i < maxRetries && canWrite; i++) {
             long tagsCode = request.getTagsCode();
+            // 是否启用外部写入
             if (isExtWriteEnable()) {
                 ConsumeQueueExt.CqExtUnit cqExtUnit = new ConsumeQueueExt.CqExtUnit();
                 cqExtUnit.setFilterBitMap(request.getBitMap());
@@ -429,7 +438,7 @@ public class ConsumeQueue {
             log.warn("Maybe try to build consume queue repeatedly maxPhysicOffset={} phyOffset={}", maxPhysicOffset, offset);
             return true;
         }
-
+        // /依次将消息偏移量、消息长度、tag写入到ByteBuffer中
         this.byteBufferIndex.flip();
         this.byteBufferIndex.limit(CQ_STORE_UNIT_SIZE);
         this.byteBufferIndex.putLong(offset);
@@ -437,10 +446,9 @@ public class ConsumeQueue {
         this.byteBufferIndex.putLong(tagsCode);
 
         final long expectLogicOffset = cqOffset * CQ_STORE_UNIT_SIZE;
-
+        // 获得内存映射文件
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile(expectLogicOffset);
         if (mappedFile != null) {
-
             if (mappedFile.isFirstCreateInQueue() && cqOffset != 0 && mappedFile.getWrotePosition() == 0) {
                 this.minLogicOffset = expectLogicOffset;
                 this.mappedFileQueue.setFlushedWhere(expectLogicOffset);
@@ -471,6 +479,7 @@ public class ConsumeQueue {
                 }
             }
             this.maxPhysicOffset = offset + size;
+            // // 将消息追加到内存映射文件,异步输盘
             return mappedFile.appendMessage(this.byteBufferIndex.array());
         }
         return false;

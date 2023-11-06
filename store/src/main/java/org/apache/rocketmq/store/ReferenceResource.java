@@ -40,10 +40,17 @@ public abstract class ReferenceResource {
         return this.available;
     }
 
+    /**
+     * MappedFile 关闭
+     * @param intervalForcibly
+     */
     public void shutdown(final long intervalForcibly) {
         if (this.available) {
+            // 关闭 MappedFile
             this.available = false;
+            // 设置当前关闭时间戳
             this.firstShutdownTimestamp = System.currentTimeMillis();
+            // 是否资源
             this.release();
         } else if (this.getRefCount() > 0) {
             if ((System.currentTimeMillis() - this.firstShutdownTimestamp) >= intervalForcibly) {
@@ -54,6 +61,7 @@ public abstract class ReferenceResource {
     }
 
     public void release() {
+        // 如果数据被引用，则不释放
         long value = this.refCount.decrementAndGet();
         if (value > 0)
             return;

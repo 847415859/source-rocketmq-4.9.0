@@ -31,19 +31,21 @@ public class One2OneProducer {
         producer.setSendMsgTimeout(30000);
         // 2.设置发送的命名服务器（NameServer）地址
         producer.setNamesrvAddr(Default.NAME_SERVER_ADDRESS);
+
         // 3.启动生产者服务
         producer.start();
         // 4.发送消息
-        // Message message = new Message("one2oneTopic","one2oneTags","Hello World".getBytes(StandardCharsets.UTF_8));
-        // producer.send(message);
+        Message message = new Message("one2oneTopic","one2oneTags","Hello World".getBytes(StandardCharsets.UTF_8));
+        message.setWaitStoreMsgOK(true);
+        producer.send(message);
 
         // 批量消息
-        Message message1 = new Message("one2oneTopic","one2oneTags","Hello World".getBytes(StandardCharsets.UTF_8));
-        Message message2 = new Message("one2oneTopic","one2oneTags","Hello World".getBytes(StandardCharsets.UTF_8));
-        List<Message> messages = new ArrayList<>();
-        messages.add(message1);
-        messages.add(message2);
-        producer.send(messages);
+        // Message message1 = new Message("one2oneTopic","one2oneTags","Hello World".getBytes(StandardCharsets.UTF_8));
+        // Message message2 = new Message("one2oneTopic","one2oneTags","Hello World".getBytes(StandardCharsets.UTF_8));
+        // List<Message> messages = new ArrayList<>();
+        // messages.add(message1);
+        // messages.add(message2);
+        // producer.send(messages);
 
         // 异步消息
         // producer.send(message, new SendCallback() {

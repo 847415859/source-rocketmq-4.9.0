@@ -58,17 +58,21 @@ public class IndexService {
     }
 
     public boolean load(final boolean lastExitOK) {
+        // 索引文件目录
         File dir = new File(this.storePath);
         File[] files = dir.listFiles();
         if (files != null) {
-            // ascending order
+            // ascending order  文件排序
             Arrays.sort(files);
+            // 遍历文件
             for (File file : files) {
                 try {
+                    // 加载索引文件
                     IndexFile f = new IndexFile(file.getPath(), this.hashSlotNum, this.indexNum, 0, 0);
                     f.load();
 
                     if (!lastExitOK) {
+                        // /索引文件上次的刷盘时间小于该索引文件的消息时间戳,该文件将立即删除
                         if (f.getEndTimestamp() > this.defaultMessageStore.getStoreCheckpoint()
                             .getIndexMsgTimestamp()) {
                             f.destroy(0);
@@ -77,6 +81,7 @@ public class IndexService {
                     }
 
                     log.info("load index file OK, " + f.getFileName());
+                    // 将索引文件添加到队列
                     this.indexFileList.add(f);
                 } catch (IOException e) {
                     log.error("load file {} error", file, e);
@@ -201,13 +206,20 @@ public class IndexService {
         return topic + "#" + key;
     }
 
+    /**
+     * 根据 分发消息请求 构建索引文件
+     * @param req
+     */
     public void buildIndex(DispatchRequest req) {
+        // 获取索引文件
         IndexFile indexFile = retryGetAndCreateIndexFile();
         if (indexFile != null) {
+            // 获取文件最大物理偏移量
             long endPhyOffset = indexFile.getEndPhyOffset();
             DispatchRequest msg = req;
             String topic = msg.getTopic();
             String keys = msg.getKeys();
+            // 如果该消息的物理偏移量小于索引文件中的最大物理偏移量,则说明是重复数据,忽略本次索引构建
             if (msg.getCommitLogOffset() < endPhyOffset) {
                 return;
             }
@@ -221,7 +233,7 @@ public class IndexService {
                 case MessageSysFlag.TRANSACTION_ROLLBACK_TYPE:
                     return;
             }
-
+            // 如果消息ID不为空,则添加到Hash索引中
             if (req.getUniqKey() != null) {
                 indexFile = putKey(indexFile, msg, buildKey(topic, req.getUniqKey()));
                 if (indexFile == null) {
@@ -229,7 +241,7 @@ public class IndexService {
                     return;
                 }
             }
-
+            // 构建索引key,RocketMQ支持为同一个消息建立多个索引,多个索引键空格隔开
             if (keys != null && keys.length() > 0) {
                 String[] keyset = keys.split(MessageConst.KEY_SEPARATOR);
                 for (int i = 0; i < keyset.length; i++) {
@@ -248,7 +260,15 @@ public class IndexService {
         }
     }
 
+    /**
+     * 根据消息key，构建 Index
+     * @param indexFile
+     * @param msg
+     * @param idxKey
+     * @return
+     */
     private IndexFile putKey(IndexFile indexFile, DispatchRequest msg, String idxKey) {
+        // 只要放入不成功就一直放
         for (boolean ok = indexFile.putKey(idxKey, msg.getCommitLogOffset(), msg.getStoreTimestamp()); !ok; ) {
             log.warn("Index file [" + indexFile.getFileName() + "] is full, trying to create another one");
 
@@ -259,7 +279,6 @@ public class IndexService {
 
             ok = indexFile.putKey(idxKey, msg.getCommitLogOffset(), msg.getStoreTimestamp());
         }
-
         return indexFile;
     }
 
@@ -270,7 +289,7 @@ public class IndexService {
      */
     public IndexFile retryGetAndCreateIndexFile() {
         IndexFile indexFile = null;
-
+        // 重试3次
         for (int times = 0; null == indexFile && times < MAX_TRY_IDX_CREATE; times++) {
             indexFile = this.getAndCreateLastIndexFile();
             if (null != indexFile)
