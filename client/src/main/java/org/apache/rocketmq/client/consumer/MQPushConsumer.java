@@ -47,6 +47,7 @@ public interface MQPushConsumer extends MQConsumer {
 
     /**
      * Subscribe some topic
+     * 基于tag 订阅主题
      *
      * @param subExpression subscription expression.it only support or operation such as "tag1 || tag2 || tag3" <br> if
      * null or * expression,meaning subscribe
@@ -69,6 +70,7 @@ public interface MQPushConsumer extends MQConsumer {
 
     /**
      * Subscribe some topic with selector.
+     * 订阅消息，并指定队列选择器
      * <p>
      * This interface also has the ability of {@link #subscribe(String, String)},
      * and, support other message selection, such as {@link org.apache.rocketmq.common.filter.ExpressionType#SQL92}.

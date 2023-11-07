@@ -52,6 +52,8 @@ import org.apache.rocketmq.remoting.exception.RemotingException;
  * Technically speaking, this push client is virtually a wrapper of the underlying pull service. Specifically, on
  * arrival of messages pulled from brokers, it roughly invokes the registered callback handler to feed the messages.
  * </p>
+ * 在大多数情况下，这是最推荐使用消息的类。
+ * 从技术上讲，这个推送客户端实际上是底层拉取服务的包装器。具体来说，当从代理中提取的消息到达时，它大致调用注册的回调处理程序来馈送消息。
  *
  * See quickstart/Consumer in the example module for a typical usage.
  * </p>
@@ -80,6 +82,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Message model defines the way how messages are delivered to each consumer clients.
+     * 消息消费模式
      * </p>
      *
      * RocketMQ supports two message models: clustering and broadcasting. If clustering is set, consumer clients with
@@ -94,6 +97,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Consuming point on consumer booting.
+     * 指定消费开始偏移量（最大偏移量、最小偏移量、启动时间戳）开始消费
      * </p>
      *
      * There are three consuming points:
@@ -135,6 +139,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Queue allocation algorithm specifying how message queues are allocated to each consumer clients.
+     * 集群模式下的消息队列负载策略
      */
     private AllocateMessageQueueStrategy allocateMessageQueueStrategy;
 
@@ -145,21 +150,25 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Message listener
+     * 消息业务监听器
      */
     private MessageListener messageListener;
 
     /**
      * Offset Storage
+     * 消息消费进度存储器
      */
     private OffsetStore offsetStore;
 
     /**
      * Minimum consumer thread number
+     * 最小的消费线程
      */
     private int consumeThreadMin = 20;
 
     /**
      * Max consumer thread number
+     * 最大的消费线程
      */
     private int consumeThreadMax = 20;
 
@@ -170,12 +179,14 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Concurrently max span offset.it has no effect on sequential consumption
+     * 并发消息消费时处理队列最大跨度
      */
     private int consumeConcurrentlyMaxSpan = 2000;
 
     /**
      * Flow control threshold on queue level, each message queue will cache at most 1000 messages by default,
      * Consider the {@code pullBatchSize}, the instantaneous value may exceed the limit
+     * 每1000次流控后打印流控日志
      */
     private int pullThresholdForQueue = 1000;
 
@@ -212,16 +223,19 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Message pull Interval
+     * 推模式下任务间隔时间
      */
     private long pullInterval = 0;
 
     /**
      * Batch consumption size
+     * 每次传入MessageListener#consumerMessage中消息的数量
      */
     private int consumeMessageBatchMaxSize = 1;
 
     /**
      * Batch pull size
+     * 推模式下任务拉取的条数,默认32条
      */
     private int pullBatchSize = 32;
 
@@ -241,6 +255,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      *
      * If messages are re-consumed more than {@link #maxReconsumeTimes} before success, it's be directed to a deletion
      * queue waiting.
+     * 消息重试次数,-1代表16次
      */
     private int maxReconsumeTimes = -1;
 
@@ -251,6 +266,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Maximum amount of time in minutes a message may block the consuming thread.
+     * 消息消费超时时间
      */
     private long consumeTimeout = 15;
 
@@ -689,11 +705,12 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * This method gets internal infrastructure readily to serve. Instances must call this method after configuration.
-     *
+     * 这种方法可以很容易地为内部基础设施提供服务。实例必须在配置后调用此方法
      * @throws MQClientException if there is any client error.
      */
     @Override
     public void start() throws MQClientException {
+        // 设置消费者组
         setConsumerGroup(NamespaceUtil.wrapNamespace(this.getNamespace(), this.consumerGroup));
         this.defaultMQPushConsumerImpl.start();
         if (null != traceDispatcher) {

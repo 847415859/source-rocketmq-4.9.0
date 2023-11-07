@@ -16,27 +16,24 @@
  */
 package org.apache.rocketmq.client.impl.consumer;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
+import org.apache.rocketmq.client.log.ClientLogger;
+import org.apache.rocketmq.common.message.MessageAccessor;
+import org.apache.rocketmq.common.message.MessageConst;
+import org.apache.rocketmq.common.message.MessageExt;
+import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
+import org.apache.rocketmq.logging.InternalLogger;
+
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
-import org.apache.rocketmq.client.log.ClientLogger;
-import org.apache.rocketmq.logging.InternalLogger;
-import org.apache.rocketmq.common.message.MessageAccessor;
-import org.apache.rocketmq.common.message.MessageConst;
-import org.apache.rocketmq.common.message.MessageExt;
-import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
-
 /**
  * Queue consumption snapshot
+ * 队列消费快照
  */
 public class ProcessQueue {
     public final static long REBALANCE_LOCK_MAX_LIVE_TIME =
@@ -44,19 +41,29 @@ public class ProcessQueue {
     public final static long REBALANCE_LOCK_INTERVAL = Long.parseLong(System.getProperty("rocketmq.client.rebalance.lockInterval", "20000"));
     private final static long PULL_MAX_IDLE_TIME = Long.parseLong(System.getProperty("rocketmq.client.pull.pullMaxIdleTime", "120000"));
     private final InternalLogger log = ClientLogger.getLog();
+    // 读写锁
     private final ReadWriteLock treeMapLock = new ReentrantReadWriteLock();
+    // 消息容器
     private final TreeMap<Long, MessageExt> msgTreeMap = new TreeMap<Long, MessageExt>();
+    // ProcessQueue总消息数
     private final AtomicLong msgCount = new AtomicLong();
+    // 消息大小记录
     private final AtomicLong msgSize = new AtomicLong();
+    //
     private final Lock consumeLock = new ReentrantLock();
     /**
      * A subset of msgTreeMap, will only be used when orderly consume
+     * msgTreeMap的子集，仅在有序消费时使用
      */
     private final TreeMap<Long, MessageExt> consumingMsgOrderlyTreeMap = new TreeMap<Long, MessageExt>();
     private final AtomicLong tryUnlockTimes = new AtomicLong(0);
+    // ProcessQueue队列最大偏移量
     private volatile long queueOffsetMax = 0L;
+    // 当前ProcessQueue是否被丢弃
     private volatile boolean dropped = false;
+    // 上一次拉取时间戳
     private volatile long lastPullTimestamp = System.currentTimeMillis();
+    // 上一次消费的时间戳
     private volatile long lastConsumeTimestamp = System.currentTimeMillis();
     private volatile boolean locked = false;
     private volatile long lastLockTimestamp = System.currentTimeMillis();
@@ -124,6 +131,11 @@ public class ProcessQueue {
         }
     }
 
+    /**
+     * 添加消息
+     * @param msgs
+     * @return
+     */
     public boolean putMessage(final List<MessageExt> msgs) {
         boolean dispatchToConsume = false;
         try {
@@ -165,6 +177,10 @@ public class ProcessQueue {
         return dispatchToConsume;
     }
 
+    /**
+     * 获取消息最大间隔
+     * @return
+     */
     public long getMaxSpan() {
         try {
             this.treeMapLock.readLock().lockInterruptibly();
@@ -182,6 +198,11 @@ public class ProcessQueue {
         return 0;
     }
 
+    /**
+     * 移除消息
+     * @param msgs
+     * @return
+     */
     public long removeMessage(final List<MessageExt> msgs) {
         long result = -1;
         final long now = System.currentTimeMillis();
@@ -243,6 +264,10 @@ public class ProcessQueue {
         this.locked = locked;
     }
 
+    /**
+     * 将consumingMsgOrderlyTreeMap中消息重新放在msgTreeMap,并清空
+     * consumingMsgOrderlyTreeMap
+     */
     public void rollback() {
         try {
             this.treeMapLock.writeLock().lockInterruptibly();
@@ -257,6 +282,10 @@ public class ProcessQueue {
         }
     }
 
+    /**
+     * 将consumingMsgOrderlyTreeMap消息清除,表示成功处理该批消息
+     * @return
+     */
     public long commit() {
         try {
             this.treeMapLock.writeLock().lockInterruptibly();
@@ -280,6 +309,10 @@ public class ProcessQueue {
         return -1;
     }
 
+    /**
+     * 重新处理这批消息
+     * @param msgs
+     */
     public void makeMessageToConsumeAgain(List<MessageExt> msgs) {
         try {
             this.treeMapLock.writeLock().lockInterruptibly();
@@ -296,6 +329,11 @@ public class ProcessQueue {
         }
     }
 
+    /**
+     * 从processQueue中取出batchSize条消息
+     * @param batchSize
+     * @return
+     */
     public List<MessageExt> takeMessages(final int batchSize) {
         List<MessageExt> result = new ArrayList<MessageExt>(batchSize);
         final long now = System.currentTimeMillis();
